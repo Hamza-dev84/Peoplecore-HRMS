@@ -1,11 +1,12 @@
 import mongoose, { type QueryFilter } from "mongoose";
 import type { Request } from "express";
 import Leave, { LEAVE_TYPES, LEAVE_STATUSES, type ILeave, type LeaveStatus } from "../models/Leave";
-import User from "../models/User";
+import User, { type Role } from "../models/User";
 import asyncWrapper from "../utilities/asyncWrapper";
 import ApiError from "../utilities/ApiError";
 import { successResponse } from "../utilities/responseHandler";
 import { getToday, isValidDateString } from "../utilities/date";
+import { sendNotification, sendNotificationToMany } from "../utilities/notify";
 
 const getId = (req: Request): string => {
     const id = String(req.params.id);
@@ -100,6 +101,24 @@ const applyLeave = asyncWrapper(async (req, res) => {
         totalDays: calculateDays(start, end),
         reason,
     });
+
+      const reviewerRoles: Role[] =
+    req.user!.role === "employee" ? ["hr", "super_admin"] : ["super_admin"];
+    const reviewers = await User.find({
+        isActive: true,
+        _id: { $ne: req.user!._id },
+        role: { $in: reviewerRoles },
+    }).select("_id");
+
+    await sendNotificationToMany(
+        reviewers.map((reviewer) => reviewer._id),
+        {
+            type: "leave_request",
+            title: "New leave request",
+            message: `${req.user!.name} requested ${leave.totalDays} day(s) of ${leave.leaveType} leave (${start} to ${end}).`,
+            link: "/leaves",
+        }
+    );
 
     successResponse({
         res,
@@ -196,6 +215,17 @@ const reviewLeave = (status: "approved" | "rejected") =>
         if (!updated) {
             throw new ApiError(400, "Leave request is no longer pending");
         }
+
+        await sendNotification(
+            leave.user,
+            {
+                type: status === "approved" ? "leave_approved" : "leave_rejected",
+                title: `Leave ${status}`,
+                message: `Your ${leave.leaveType} leave (${leave.startDate} to ${leave.endDate}) was ${status} by ${req.user!.name}.${comment ? ` Comment: ${comment}` : ""}`,
+                link: "/leaves",
+            },
+            true
+        );
 
         successResponse({
             res,
