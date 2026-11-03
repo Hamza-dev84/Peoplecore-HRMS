@@ -18,3 +18,16 @@ export const getMonthRange = (month: string): { start: string; end: string } => 
 
   return { start: `${month}-01`, end };
 };
+
+export const getLastDays = (count: number): string[] => {
+  const today = getToday();
+  const days: string[] = [];
+
+  for (let i = count - 1; i >= 0; i--) {
+    const day = new Date(`${today}T00:00:00Z`);
+    day.setUTCDate(day.getUTCDate() - i);
+    days.push(day.toISOString().slice(0, 10));
+  }
+
+  return days;
+};
