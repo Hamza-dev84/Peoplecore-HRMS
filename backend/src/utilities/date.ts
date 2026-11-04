@@ -31,3 +31,13 @@ export const getLastDays = (count: number): string[] => {
 
   return days;
 };
+
+export const formatTime = (value?: Date): string =>
+  value
+    ? new Intl.DateTimeFormat("en-GB", {
+      timeZone: process.env.TIMEZONE || "Asia/Karachi",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(value)
+    : "";
