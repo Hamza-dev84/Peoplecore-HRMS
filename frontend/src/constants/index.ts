@@ -41,3 +41,5 @@ export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
   rejected: "Rejected",
   cancelled: "Cancelled",
 };
+
+export const NOTIFICATIONS_CHANGED_EVENT = "notifications:changed";
